@@ -20,10 +20,14 @@ import (
 	"periph.io/x/periph/host"
 )
 
-var (
-	weatherkey  = flag.String("weatherkey", "", "API Key for Dark Skies Weather")
-	newskey     = flag.String("newskey", "", "API Key for Google News API")
-)
+type fontbytes struct {
+	File string
+	B []byte
+}
+
+type fonts struct {
+	Fonts map[string]*fontbytes
+}
 
 type state struct {
 	Time string
@@ -41,6 +45,11 @@ type textLine struct {
 type imageContents struct {
 	Lines []*textLine
 }
+
+// Global Vars for config
+var weatherkey  = flag.String("weatherkey", "", "API Key for Dark Skies Weather")
+var newskey     = flag.String("newskey", "", "API Key for Google News API")
+var f *fonts
 
 func checkErr(err error) {
 	if err != nil {
@@ -128,10 +137,10 @@ func mode(mchan chan bool, pin string) {
 
 func stateBuilder(statechan chan *state, icchan chan *imageContents) {
 	// Receive states, generate imageContents and send to imageGenerator
-	dateLine        := &textLine{Text: "New Date", Size: 14, Font: "MonospaceTypewriter.ttf"}
-	weatherLine     := &textLine{Text: "New Weather", Size: 12, Font: "MonospaceTypewriter.ttf"}
-	temperatureLine := &textLine{Text: "New Temp", Size: 12, Font: "MonospaceTypewriter.ttf"}
-	timeLine        := &textLine{Text: "New Time", Size: 24, Font: "phage.ttf"}
+	dateLine        := &textLine{Text: "New Date", Size: 14, Font: "mt"}
+	weatherLine     := &textLine{Text: "New Weather", Size: 12, Font: "mt"}
+	temperatureLine := &textLine{Text: "New Temp", Size: 14, Font: "mt"}
+	timeLine        := &textLine{Text: "New Time", Size: 26, Font: "phage"}
 	for {
 		s := <-statechan
 		// New State
@@ -165,17 +174,15 @@ func modeStateMachine(icchan chan *imageContents, mchan chan bool, imgchan chan 
 	}
 }
 
-func drawText(fontfile string, size float64, text string, pt *fixed.Point26_6, img *image.RGBA) {
+func drawText(fontkey string, size float64, text string, pt *fixed.Point26_6, img *image.RGBA) {
 	// Read the font data.
 	fg := image.White
-	fontBytes, err := ioutil.ReadFile(fontfile)
-	checkErr(err)
-	pf, err := freetype.ParseFont(fontBytes)
+	pf, err := freetype.ParseFont(f.Fonts[fontkey].B)
 	checkErr(err)
 	// Set up context
 	c := freetype.NewContext()
 	// Set the Y position
-	pt.Y += c.PointToFixed(size)
+	pt.Y += c.PointToFixed(size/1.2)
 	// 59 DPI screen
 	c.SetDPI(72)
 	c.SetFont(pf)
@@ -187,6 +194,9 @@ func drawText(fontfile string, size float64, text string, pt *fixed.Point26_6, i
 	// Draw the text.
 	_, err = c.DrawString(text, *pt)
 	checkErr(err)
+	if size < 20 {
+		pt.Y += c.PointToFixed(2)
+	}
 }
 
 func generateImage(ic *imageContents, mode string) (rgba *image.RGBA) {
@@ -231,8 +241,25 @@ func spiHandler(spiPort string, gpioPin string, imgchan chan *image.RGBA) {
 	}
 }
 
+func setupFonts() {
+	mt := &fontbytes{File: "/usr/local/share/fonts/MonospaceTypewriter.ttf"}
+	phage := &fontbytes{File: "/usr/local/share/fonts/phage.ttf"}
+        fb, err := ioutil.ReadFile(mt.File)
+	checkErr(err)
+        mt.B = fb
+	fb, err = ioutil.ReadFile(phage.File)
+	checkErr(err)
+	phage.B = fb
+	fnts := map[string]*fontbytes{
+			"mt": mt,
+			"phage": phage,
+		}
+	f = &fonts{Fonts: fnts}
+}
+
 func main() {
 	flag.Parse()
+	setupFonts()
 	// Load all the drivers:
 	_, err := host.Init()
 	checkErr(err)
