@@ -111,8 +111,6 @@ func coordinator(tchan chan string, dchan chan string, wchan chan *forecast.Fore
 			// time
 			s.Time = t
 			statechan <- s
-		default:
-			// Do nothing
 		}
 	}
 }
