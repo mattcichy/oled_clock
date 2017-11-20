@@ -145,7 +145,10 @@ func stateBuilder(statechan chan *state, icchan chan *imageContents) {
 		dateLine.Text         = s.Date
 		if s.Weather != nil {
 			weatherLine.Text      = s.Weather.Currently.Summary
-			temperatureLine.Text  = fmt.Sprintf("%.2f° Celsius", s.Weather.Currently.Temperature)
+			//temperatureLine.Text  = fmt.Sprintf("%.2f° Celsius", s.Weather.Currently.Temperature)
+			tempc := s.Weather.Currently.Temperature
+			tempf := float64(1.8 * tempc) + 32
+			temperatureLine.Text  = fmt.Sprintf("%.1f°F %.1f°C", tempf, tempc)
 		}
 		timeLine.Text         = s.Time
 		ic := &imageContents{Lines: []*textLine{dateLine, weatherLine, temperatureLine, timeLine}}
@@ -256,11 +259,17 @@ func setupFonts() {
 }
 
 func main() {
-	flag.Parse()
-	setupFonts()
 	// Load all the drivers:
 	_, err := host.Init()
 	checkErr(err)
+
+	// reset screen
+	reset := gpioreg.ByName("24")
+	if reset == nil { log.Fatal("Failed to get GPIO24") }
+	checkErr(reset.Out(gpio.Low))
+	time.Sleep(500 * time.Millisecond)
+	checkErr(reset.Out(gpio.High))
+
 	// Create a shitload of channels
 	tchan := make(chan string)
 	dchan := make(chan string)
@@ -270,6 +279,11 @@ func main() {
 	statechan := make(chan *state)
 	icchan := make(chan *imageContents)
 	imgchan := make(chan *image.RGBA)
+
+	//setup
+	flag.Parse()
+	setupFonts()
+
 	// Start up goroutines
 	go spiHandler("", "23", imgchan)
 	go modeStateMachine(icchan, mchan, imgchan)
@@ -277,7 +291,8 @@ func main() {
 	go mode(mchan, "12")
 	go coordinator(tchan, dchan, wchan, nchan, statechan)
 	go checkNews(newskey, nchan)
-	go checkWeather(weatherkey, "51.5074", "0.1278", wchan)
+	go checkWeather(weatherkey, "47.5566", "-122.3760", wchan)
+
 	// Start generating timer ticks
 	generateTimeAndDate(tchan, dchan)
 }
