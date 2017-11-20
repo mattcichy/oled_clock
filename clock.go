@@ -7,6 +7,7 @@ import (
 	"image/draw"
 	"io/ioutil"
 	"log"
+	"os"
 	"time"
 
 	forecast "github.com/mlbright/forecast/v2"
@@ -74,7 +75,7 @@ func checkWeather(key *string, lat string, long string, wchan chan *forecast.For
 	// Check the weather, and send down wchan
 	f, err := forecast.Get(*key, lat, long, "now", forecast.UK, forecast.English)
 	if err != nil {
-		log.Println(err)
+		log.Println("forecast.Get err:", err)
 	} else {
 		wchan <- f
 	}
@@ -258,7 +259,16 @@ func setupFonts() {
 	f = &fonts{Fonts: fnts}
 }
 
+func setupLog() {
+	f, err := os.OpenFile("/var/log/oled_clock", os.O_RDWR | os.O_CREATE | os.O_APPEND, 0666)
+	checkErr(err)
+	log.SetOutput(f)
+}
+
 func main() {
+	// Start logging
+	setupLog()
+
 	// Load all the drivers:
 	_, err := host.Init()
 	checkErr(err)

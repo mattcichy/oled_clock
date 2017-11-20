@@ -21,7 +21,7 @@ export PATH="${PATH:+$PATH:}/usr/local/bin"
 case "$1" in
   start)
 	log_daemon_msg "Starting OLED Clock" "oled_clock" || true
-	if start-stop-daemon --start --quiet -b --oknodo --pidfile /run/oled_clock.pid --exec /usr/local/bin/oled_clock -- ; then
+	if start-stop-daemon --start --quiet -b --oknodo --pidfile /run/oled_clock.pid --exec /usr/local/bin/oled_clock -- -weatherkey 1c9e4ab42302dfed2ca3317508abcdeb ; then
 	    log_end_msg 0 || true
 	else
 	    log_end_msg 1 || true
@@ -40,7 +40,7 @@ case "$1" in
   restart)
 	log_daemon_msg "Restarting OLED Clock" "oled_clock" || true
 	killall -9 oled_clock
-	if start-stop-daemon --start --quiet -b --oknodo --pidfile /run/oled_clock.pid --exec /usr/local/bin/oled_clock -- ; then
+	if start-stop-daemon --start --quiet -b --oknodo --pidfile /run/oled_clock.pid --exec /usr/local/bin/oled_clock -- -weatherkey 1c9e4ab42302dfed2ca3317508abcdeb ; then
 	    log_end_msg 0 || true
 	else
 	    log_end_msg 1 || true
